@@ -1,0 +1,28 @@
+id: incident-ai-agent
+
+name: AI Incident Resolver
+
+description: AI agent that detects and resolves system incidents using metrics like CPU, memory, and latency.
+
+entrypoint:
+  command: uvicorn api:app --host 0.0.0.0 --port 8000
+
+ports:
+  - 8000
+
+endpoints:
+  predict:
+    path: /predict
+    method: POST
+
+  live_monitor:
+    path: /live_monitor
+    method: GET
+
+  set_incident:
+    path: /set_incident
+    method: POST
+
+resources:
+  cpu: 1
+  memory: 512Mi
