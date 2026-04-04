@@ -1,5 +1,6 @@
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import asyncio
 
@@ -45,8 +46,8 @@ class IncidentRequest(BaseModel):
 # ROOT
 # -----------------------
 @app.get("/")
-def home():
-    return {"status": "running", "mode": "env-integrated"}
+def serve_ui():
+    return FileResponse("index.html")
 
 
 # -----------------------

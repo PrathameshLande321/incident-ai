@@ -10,49 +10,67 @@ pinned: false
 
 # 🚨 Incident AI Resolver
 
-An intelligent system that **automatically detects, analyzes, and resolves infrastructure incidents** using rule-based decision logic and reward-driven optimization.
+An intelligent system that **automatically detects, analyzes, and resolves infrastructure incidents** using rule-based reasoning and reward-driven optimization.
 
-Built for hackathon submission with a focus on **real-time monitoring, decision-making, and automated recovery**.
+Built as a **hackathon-ready AI system** focused on:
+- Real-time monitoring
+- Autonomous decision-making
+- Self-healing infrastructure simulation
 
 ---
 
 # 🔥 Problem Statement
 
-Modern systems frequently face:
-- High CPU spikes
-- Memory leaks
-- Increased latency
-- Service failures
+Modern systems frequently suffer from:
 
-Manual debugging is slow, reactive, and inefficient.
+- ⚠️ High CPU spikes  
+- ⚠️ Memory leaks  
+- ⚠️ Increased latency  
+- ⚠️ Service failures  
 
-👉 This project introduces an **AI-driven automated incident resolution system**.
+Manual debugging is:
+- Slow  
+- Reactive  
+- Error-prone  
+
+👉 There is a need for **automated, intelligent incident resolution systems**
+
+---
+
+# 💡 Solution
+
+This project simulates an **AI-powered incident response system** that:
+
+- Detects abnormal system behavior  
+- Identifies root causes  
+- Takes corrective actions  
+- Optimizes decisions using rewards  
 
 ---
 
 # ⚙️ How It Works
 
-1. System generates a simulated incident (CPU / Memory / Latency)
-2. Agent analyzes current state
-3. Best action is selected:
-   - scale_up
-   - restart_service
-   - check_database
-   - do_nothing
-4. Environment updates system state
-5. Reward is calculated based on:
+1. A system incident is generated (CPU / Memory / Latency)
+2. The AI Agent analyzes the system state
+3. It selects the best action:
+   - `scale_up`
+   - `restart_service`
+   - `check_database`
+   - `do_nothing`
+4. The environment updates system metrics
+5. A reward is calculated based on:
    - improvement
    - correctness
    - efficiency
-6. Loop continues until system stabilizes
+6. The loop continues until the system stabilizes
 
 ---
 
 # 🧠 Core Components
 
-## 1. Agent (`agent.py`)
+## 🔹 Agent (`agent.py`)
 - Decision-making engine
-- Uses rule-based reasoning
+- Rule-based reasoning with confidence scoring
 - Outputs:
   - action
   - reason
@@ -60,56 +78,56 @@ Manual debugging is slow, reactive, and inefficient.
 
 ---
 
-## 2. Environment (`env.py`)
-- Simulates infrastructure metrics
-- Applies actions and updates state
+## 🔹 Environment (`env.py`)
+- Simulates real system conditions
+- Applies actions and updates metrics
 - Reward system includes:
   - progress reward
-  - penalty for wrong actions
+  - penalty for incorrect actions
   - efficiency bonus
-- Terminates when resolved
+- Stops when system is stable
 
 ---
 
-## 3. Grader (`grader/`)
-- Evaluates action correctness
-- Produces normalized score (0 → 1)
+## 🔹 Grader (`grader/`)
+- Evaluates action quality
+- Generates normalized score (0 → 1)
 
 ---
 
-## 4. API (`api.py`)
-FastAPI backend powering the system:
+## 🔹 API (`api.py`)
+FastAPI backend exposing endpoints:
 
-| Endpoint | Purpose |
-|--------|--------|
-| `/set_incident` | Initialize incident |
-| `/live_monitor` | Automatic resolution loop |
-| `/step` | Manual step execution |
+| Endpoint | Description |
+|---------|------------|
+| `/set_incident` | Initialize incident scenario |
+| `/live_monitor` | Run automated resolution loop |
+| `/step` | Execute single action manually |
 
 ---
 
-## 5. Inference (`inference.py`)
-- Simulates real-world execution
+## 🔹 Inference (`inference.py`)
+- Simulates real-world execution loop
 - Calls API endpoints
-- Tracks reward and performance
+- Tracks reward progression
 
 ---
 
-# 🚀 Features
+# 🌐 Live Demo
 
-- Real-time incident simulation
-- Intelligent decision-making agent
-- Reward-based optimization
-- REST API + WebSocket support
-- Fully Dockerized deployment
-- Hugging Face Spaces ready
+Access the deployed system here:
+
+👉 https://prathamesh-23-incident-ai.hf.space/docs
 
 ---
 
-# 📊 Example Flow
+# 🎥 Demo Walkthrough
 
-```text
-CPU: 90 → scale_up → 70
-Memory: 85 → check_database → 75
-Latency: 200 → restart_service → 120
-System stabilized → done
+### Step 1: Start an Incident
+
+POST `/set_incident`
+
+```json
+{
+  "level": "hard"
+}
