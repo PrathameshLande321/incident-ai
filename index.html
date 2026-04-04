@@ -2,19 +2,18 @@
 <html>
 <head>
   <title>Incident AI Resolver</title>
-
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
     body {
       margin: 0;
-      font-family: Arial;
-      background: #020617;
+      font-family: 'Segoe UI', sans-serif;
+      background: radial-gradient(circle at top, #020617, #000);
       color: #e2e8f0;
     }
 
     .container {
-      max-width: 1000px;
+      max-width: 1100px;
       margin: auto;
       padding: 30px;
     }
@@ -22,101 +21,78 @@
     h1 {
       text-align: center;
       color: #38bdf8;
-      margin-bottom: 25px;
+      text-shadow: 0 0 25px #38bdf8;
     }
 
-    .controls {
-      text-align: center;
-      margin-bottom: 20px;
-    }
+    .controls { text-align:center; margin:20px; }
 
     button {
-      padding: 10px 18px;
-      margin: 8px;
+      padding: 12px 20px;
+      margin: 10px;
+      border-radius: 8px;
       border: none;
-      border-radius: 6px;
-      background: #22c55e;
-      color: white;
       cursor: pointer;
-      font-size: 14px;
+      background: linear-gradient(135deg,#22c55e,#16a34a);
+      color:white;
+      transition:.3s;
     }
 
     button:hover {
-      background: #16a34a;
+      transform:scale(1.05);
+      box-shadow:0 0 20px #22c55e;
     }
 
     .status-bar {
-      text-align: center;
-      margin-bottom: 15px;
-      font-weight: bold;
-      font-size: 16px;
+      text-align:center;
+      font-weight:bold;
+      margin:15px;
+      font-size:18px;
     }
 
-    .healthy { color: #22c55e; }
-    .warning { color: #f59e0b; }
-    .critical { color: #ef4444; }
-
     .grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 15px;
-      margin-top: 15px;
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:20px;
     }
 
     .card {
-      background: #1e293b;
-      padding: 15px;
-      border-radius: 10px;
-      text-align: center;
-    }
-
-    .label {
-      font-size: 12px;
-      color: #94a3b8;
+      background:#0f172a;
+      padding:20px;
+      border-radius:12px;
+      text-align:center;
+      box-shadow:0 0 20px rgba(56,189,248,.2);
     }
 
     .value {
-      font-size: 20px;
-      font-weight: bold;
-      margin-top: 5px;
+      font-size:26px;
+      font-weight:bold;
     }
 
     .panel {
-      margin-top: 20px;
-      padding: 15px;
-      background: #1e293b;
-      border-radius: 10px;
-      line-height: 1.6;
+      margin-top:20px;
+      padding:20px;
+      background:#0f172a;
+      border-radius:12px;
     }
 
     .panel-title {
-      font-weight: bold;
-      margin-bottom: 10px;
-      color: #38bdf8;
+      color:#38bdf8;
+      margin-bottom:10px;
     }
 
     .chart-box {
-      margin-top: 25px;
-      background: #1e293b;
-      padding: 15px;
-      border-radius: 10px;
+      margin-top:20px;
+      background:#0f172a;
+      padding:15px;
+      border-radius:12px;
     }
 
     .timeline {
-      margin-top: 20px;
-      background: #020617;
-      padding: 15px;
-      border-radius: 10px;
-      max-height: 200px;
-      overflow-y: auto;
-      font-size: 13px;
+      margin-top:20px;
+      max-height:200px;
+      overflow:auto;
+      font-size:13px;
     }
-
-    .timeline div {
-      margin-bottom: 6px;
-      opacity: 0.85;
-    }
-
   </style>
 </head>
 
@@ -127,199 +103,232 @@
 <h1>🚨 Incident AI Resolver</h1>
 
 <div class="controls">
-  <button onclick="startIncident()">Start Incident</button>
-  <button onclick="startLive()">Start Monitoring</button>
-  <button onclick="stopLive()">Stop</button>
+  <button onclick="startIncident(this)">Start Incident</button>
+  <button onclick="startLive(this)">Start Monitoring</button>
+  <button onclick="stopLive(this)">Stop</button>
 </div>
 
 <div class="status-bar" id="status">System Idle</div>
 
-<!-- METRICS -->
 <div class="grid">
-  <div class="card">
-    <div class="label">CPU</div>
-    <div class="value" id="cpu">--</div>
-  </div>
-  <div class="card">
-    <div class="label">Memory</div>
-    <div class="value" id="memory">--</div>
-  </div>
-  <div class="card">
-    <div class="label">Latency</div>
-    <div class="value" id="latency">--</div>
-  </div>
+  <div class="card"><div>CPU</div><div id="cpu" class="value">0</div></div>
+  <div class="card"><div>Memory</div><div id="memory" class="value">0</div></div>
+  <div class="card"><div>Latency</div><div id="latency" class="value">0</div></div>
 </div>
 
-<!-- RESULT -->
 <div class="panel">
-  <div class="panel-title">⚡ Decision Output</div>
-  <p><b>Action:</b> <span id="action">--</span></p>
-  <p><b>Reason:</b> <span id="reason">--</span></p>
-  <p><b>Reward:</b> <span id="reward">--</span></p>
-  <p><b>Confidence:</b> <span id="confidence">--</span></p>
+  <div class="panel-title">⚡ Decision</div>
+  <p id="action"></p>
+  <p id="reason"></p>
+  <p id="reward"></p>
+  <p id="confidence"></p>
 </div>
 
-<!-- AI INSIGHT -->
 <div class="panel">
   <div class="panel-title">🧠 AI Insight</div>
-  <p id="insight">Waiting for analysis...</p>
+  <p id="insight"></p>
 </div>
 
-<!-- ANOMALY -->
 <div class="panel">
-  <div class="panel-title">⚠️ Detected Anomalies</div>
-  <p id="anomaly">None detected</p>
+  <div class="panel-title">⚠️ Anomalies</div>
+  <p id="anomaly"></p>
 </div>
 
-<!-- CHART -->
 <div class="chart-box">
   <canvas id="chart"></canvas>
 </div>
 
-<!-- TIMELINE -->
-<div class="timeline" id="timeline">
-  <div>System initialized...</div>
-</div>
+<div class="timeline" id="timeline"></div>
 
 </div>
 
 <script>
 
 const BASE_URL = "https://prathamesh-23-incident-ai.hf.space";
-let interval = null;
 
-// Chart
+let interval;
+let target = {cpu:0,memory:0,latency:0};
+let current = {cpu:0,memory:0,latency:0};
+let lastReward = 0;
+let prev = {cpu:0,memory:0,latency:0};
+
+// chart
 const ctx = document.getElementById("chart").getContext("2d");
-const chart = new Chart(ctx, {
-  type: "line",
-  data: {
-    labels: [],
-    datasets: [
-      { label: "CPU", data: [], borderWidth: 2 },
-      { label: "Memory", data: [], borderWidth: 2 },
-      { label: "Latency", data: [], borderWidth: 2 }
+const chart = new Chart(ctx,{
+  type:"line",
+  data:{
+    labels:[],
+    datasets:[
+      {label:"CPU",data:[]},
+      {label:"Memory",data:[]},
+      {label:"Latency",data:[]}
     ]
-  },
-  options: { responsive: true }
+  }
 });
 
-// Timeline log
-function log(msg) {
-  const box = document.getElementById("timeline");
-  const el = document.createElement("div");
-  el.innerText = msg;
-  box.prepend(el);
+
+// 🔥 randomness injection
+function noise(){
+  return (Math.random()*6 - 3);
 }
 
-// Health status
-function updateStatus(cpu, mem, lat) {
-  let status = "Healthy";
-  let cls = "healthy";
 
-  if (cpu > 80 || mem > 80 || lat > 180) {
-    status = "Critical";
-    cls = "critical";
-  } else if (cpu > 60 || mem > 60 || lat > 120) {
-    status = "Warning";
-    cls = "warning";
+// 🔥 smooth + noisy stream
+setInterval(()=>{
+  for(let k in current){
+    let noisyTarget = target[k] + noise();
+    current[k] += (noisyTarget - current[k]) * 0.25;
+    document.getElementById(k).innerText = Math.round(current[k]);
   }
 
-  const el = document.getElementById("status");
-  el.innerText = status;
-  el.className = "status-bar " + cls;
-}
-
-// Metrics update
-function updateMetrics(obs) {
-  document.getElementById("cpu").innerText = obs.cpu;
-  document.getElementById("memory").innerText = obs.memory;
-  document.getElementById("latency").innerText = obs.latency;
-
   chart.data.labels.push("");
-  chart.data.datasets[0].data.push(obs.cpu);
-  chart.data.datasets[1].data.push(obs.memory);
-  chart.data.datasets[2].data.push(obs.latency);
+  chart.data.datasets[0].data.push(current.cpu);
+  chart.data.datasets[1].data.push(current.memory);
+  chart.data.datasets[2].data.push(current.latency);
+
+  if(chart.data.labels.length>25){
+    chart.data.labels.shift();
+    chart.data.datasets.forEach(d=>d.data.shift());
+  }
+
   chart.update();
 
-  updateStatus(obs.cpu, obs.memory, obs.latency);
+},300);
+
+
+// 🔥 smarter insight using trend
+function insight(o){
+  let trendMem = o.memory - prev.memory;
+  let trendLat = o.latency - prev.latency;
+
+  if(o.memory>85 && trendMem>0)
+    return "Memory leak worsening over time → immediate restart required";
+
+  if(o.latency>150 && trendLat>0)
+    return "Latency increasing → cascading failure risk";
+
+  if(o.cpu>85)
+    return "CPU overload → scaling needed";
+
+  return "System stabilizing → metrics improving";
 }
 
-// Anomaly detection
-function detectAnomaly(cpu, mem, lat) {
-  let issues = [];
 
-  if (cpu > 80) issues.push("High CPU usage");
-  if (mem > 80) issues.push("Memory pressure");
-  if (lat > 180) issues.push("Latency spike");
-
-  return issues.length ? issues.join(", ") : "System stable";
+// anomaly
+function anomaly(o){
+  let a=[];
+  if(o.cpu>80) a.push("CPU spike");
+  if(o.memory>80) a.push("Memory leak");
+  if(o.latency>150) a.push("Latency surge");
+  return a.length?a.join(", "):"No anomalies";
 }
 
-// AI Insight
-function generateInsight(obs) {
-  if (obs.memory > 80) return "Memory is critically high → restart reduces pressure.";
-  if (obs.cpu > 80) return "CPU overload → scaling distributes load.";
-  if (obs.latency > 150) return "Latency spike → restart improves response time.";
-  return "System stabilizing, minimal intervention required.";
+
+// reward trend
+function rewardLabel(r){
+  if(r>lastReward) return "Improving 📈";
+  if(r<lastReward) return "Degrading 📉";
+  return "Stable ⚖️";
 }
 
-// Update AI panel
-function updateAI(data) {
-  document.getElementById("action").innerText = data.action;
-  document.getElementById("reason").innerText = data.reason;
-  document.getElementById("reward").innerText = data.reward;
-  document.getElementById("confidence").innerText = data.confidence;
 
-  document.getElementById("insight").innerText = generateInsight(data.observation);
-
-  document.getElementById("anomaly").innerText =
-    detectAnomaly(
-      data.observation.cpu,
-      data.observation.memory,
-      data.observation.latency
-    );
+// timeline
+function log(msg){
+  let el=document.createElement("div");
+  el.innerText=new Date().toLocaleTimeString()+" → "+msg;
+  document.getElementById("timeline").prepend(el);
 }
 
-// Start incident
-async function startIncident() {
-  const res = await fetch(BASE_URL + "/set_incident", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({ level: "hard" })
+
+// update
+function update(data){
+  const o=data.observation;
+  target=o;
+
+  document.getElementById("action").innerText="Action: "+data.action;
+  document.getElementById("reason").innerText="Reason: "+data.reason;
+  document.getElementById("reward").innerText="Reward: "+data.reward.toFixed(2)+" ("+rewardLabel(data.reward)+")";
+  document.getElementById("confidence").innerText="Confidence: "+(data.confidence*100).toFixed(0)+"%";
+
+  document.getElementById("insight").innerText=insight(o);
+  document.getElementById("anomaly").innerText=anomaly(o);
+
+  lastReward=data.reward;
+  prev=o;
+
+  log(data.action+" → reward "+data.reward.toFixed(2));
+}
+
+
+// reset
+function resetUI(){
+  current={cpu:0,memory:0,latency:0};
+  target={cpu:0,memory:0,latency:0};
+  prev={cpu:0,memory:0,latency:0};
+
+  chart.data.labels=[];
+  chart.data.datasets.forEach(d=>d.data=[]);
+  chart.update();
+
+  document.getElementById("timeline").innerHTML="";
+}
+
+
+// start incident (randomized)
+async function startIncident(btn){
+
+  if(interval){
+    clearInterval(interval);
+    interval=null;
+  }
+
+  resetUI();
+
+  let levels=["easy","medium","hard"];
+  let level=levels[Math.floor(Math.random()*levels.length)];
+
+  let res=await fetch(BASE_URL+"/set_incident",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({level})
   });
 
-  const data = await res.json();
-  updateMetrics(data.observation);
+  let d=await res.json();
 
-  log("🚀 Incident started");
+  target=d.observation;
+
+  document.getElementById("status").innerText="New Incident ("+level+")";
+  log("New random incident: "+level);
 }
 
-// Live loop
-function startLive() {
-  if (interval) return;
-  interval = setInterval(runAI, 2000);
+
+// start
+function startLive(btn){
+  if(interval) return;
+  interval=setInterval(run,1200);
+  document.getElementById("status").innerText="Monitoring Live";
 }
 
-// Stop
-function stopLive() {
+
+// stop
+function stopLive(btn){
   clearInterval(interval);
-  interval = null;
-  log("⏹ Monitoring stopped");
+  interval=null;
+  document.getElementById("status").innerText="Stopped";
 }
 
-// Run AI
-async function runAI() {
-  const res = await fetch(BASE_URL + "/live_monitor");
-  const data = await res.json();
 
-  updateMetrics(data.observation);
-  updateAI(data);
+// loop
+async function run(){
+  let res=await fetch(BASE_URL+"/live_monitor");
+  let d=await res.json();
 
-  log(`⚡ ${data.action} → ${data.reason}`);
+  update(d);
 
-  if (data.done) {
+  if(d.done){
     stopLive();
-    log("✅ System stabilized");
+    document.getElementById("status").innerText="Resolved ✅";
+    log("System stabilized");
   }
 }
 
