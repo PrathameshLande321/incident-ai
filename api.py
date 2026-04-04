@@ -3,16 +3,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import asyncio
+import os
 
 from agent import Agent
 from env import IncidentEnv
-from grader.grader import Grader   # ✅ REQUIRED
+from grader.grader import Grader
 
 from tasks.easy_task import easy_task
 from tasks.medium_task import medium_task
 from tasks.hard_task import hard_task
 
+
+print("🚀 API STARTED")  # DEBUG
+
 app = FastAPI()
+
 
 # -----------------------
 # CORS
@@ -25,15 +30,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # -----------------------
 # GLOBAL SYSTEM
 # -----------------------
 agent = Agent()
-
-grader = Grader()                  # ✅ FIX
-env = IncidentEnv(grader)          # ✅ FIX
+grader = Grader()
+env = IncidentEnv(grader)
 
 current_obs = None
+
 
 # -----------------------
 # INPUT SCHEMA
@@ -43,11 +49,20 @@ class IncidentRequest(BaseModel):
 
 
 # -----------------------
-# ROOT
+# ROOT (SAFE VERSION)
 # -----------------------
 @app.get("/")
 def serve_ui():
-    return FileResponse("index.html")
+    file_path = os.path.join(os.getcwd(), "index.html")
+
+    print("Looking for index.html at:", file_path)
+
+    if not os.path.exists(file_path):
+        print("❌ index.html NOT FOUND")
+        return {"error": "index.html not found in container"}
+
+    print("✅ index.html FOUND")
+    return FileResponse(file_path)
 
 
 # -----------------------
@@ -59,9 +74,6 @@ def set_incident(req: IncidentRequest):
 
     agent.reset()
 
-    # -----------------------
-    # LOAD TASK PROPERLY
-    # -----------------------
     if req.level == "easy":
         task = easy_task()
     elif req.level == "medium":
@@ -71,11 +83,8 @@ def set_incident(req: IncidentRequest):
     else:
         return {"error": "Invalid level"}
 
-    # -----------------------
-    # INIT ENV CORRECTLY
-    # -----------------------
-    env.set_task(task)        # ✅ REQUIRED
-    current_obs = env.reset() # ✅ REQUIRED
+    env.set_task(task)
+    current_obs = env.reset()
 
     return {
         "message": f"{req.level} incident started",
