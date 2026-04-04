@@ -1,8 +1,8 @@
 def medium_task():
     return {
         "description": "Fix database latency issue",
-        "cpu": 75,
-        "memory": 70,
-        "latency": 160,
+        "cpu": 40,
+        "memory": 50,
+        "latency": 180,
         "solution": ["restart_service", "check_database"]
     }

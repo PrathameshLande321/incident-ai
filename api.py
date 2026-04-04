@@ -1,173 +1,181 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import asyncio
+
 from agent import Agent
-import random
+from env import IncidentEnv
+from grader.grader import Grader   # ✅ REQUIRED
+
+from tasks.easy_task import easy_task
+from tasks.medium_task import medium_task
+from tasks.hard_task import hard_task
 
 app = FastAPI()
+
+# -----------------------
+# CORS
+# -----------------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# -----------------------
+# GLOBAL SYSTEM
+# -----------------------
 agent = Agent()
 
-# -----------------------
-# GLOBAL INCIDENT STATE
-# -----------------------
-current_incident = {
-    "metrics": {"cpu": 90, "memory": 40, "latency": 20},
-    "root_cause": "high_cpu"
-}
+grader = Grader()                  # ✅ FIX
+env = IncidentEnv(grader)          # ✅ FIX
+
+current_obs = None
 
 # -----------------------
-# ENVIRONMENT HELPERS (NEW)
+# INPUT SCHEMA
 # -----------------------
-def random_state():
-    return {
-        "cpu": random.randint(10, 95),
-        "memory": random.randint(10, 95),
-        "latency": random.randint(50, 500)
-    }
-
-# -----------------------
-# INPUT SCHEMAS
-# -----------------------
-class Metrics(BaseModel):
-    cpu: int
-    memory: int
-    latency: int
-
 class IncidentRequest(BaseModel):
     level: str
 
-# ✅ NEW (for step)
-class ActionInput(BaseModel):
-    action: str
 
 # -----------------------
-# HOME
+# ROOT
 # -----------------------
 @app.get("/")
 def home():
-    return {"message": "Incident AI is running"}
+    return {"status": "running", "mode": "env-integrated"}
+
 
 # -----------------------
-# STATE (NEW)
-# -----------------------
-@app.get("/state")
-def get_state():
-    return current_incident["metrics"]
-
-# -----------------------
-# RESET (NEW)
-# -----------------------
-@app.post("/reset")
-def reset():
-    global current_incident
-    agent.action_history = []
-
-    current_incident["metrics"] = random_state()
-
-    return {
-        "state": current_incident["metrics"]
-    }
-
-# -----------------------
-# STEP (NEW)
-# -----------------------
-@app.post("/step")
-def step(input: ActionInput):
-    global current_incident
-
-    metrics = current_incident["metrics"]
-    action = input.action
-
-    cpu = metrics["cpu"]
-    memory = metrics["memory"]
-    latency = metrics["latency"]
-
-    reward = 0.0
-
-    # --- reward logic ---
-    if cpu > 85 and latency > 250:
-        reward = 1.0 if action == "restart_service" else 0.2
-
-    elif latency > 400:
-        reward = 1.0 if action == "scale_up" else 0.3
-
-    elif memory > 85:
-        reward = 1.0 if action == "clear_cache" else 0.3
-
-    else:
-        reward = 1.0 if action == "no_action" else 0.2
-
-    # simulate next state
-    current_incident["metrics"] = random_state()
-
-    return {
-        "next_state": current_incident["metrics"],
-        "reward": reward,
-        "done": False
-    }
-
-# -----------------------
-# SET INCIDENT (UNCHANGED)
+# SET INCIDENT
 # -----------------------
 @app.post("/set_incident")
 def set_incident(req: IncidentRequest):
-    global current_incident
+    global current_obs
 
-    level = req.level
+    agent.reset()
 
-    agent.action_history = []
-
-    if level == "easy":
-        current_incident = {
-            "metrics": {"cpu": 90, "memory": 40, "latency": 20},
-            "root_cause": "high_cpu"
-        }
-
-    elif level == "medium":
-        current_incident = {
-            "metrics": {"cpu": 40, "memory": 50, "latency": 150},
-            "root_cause": "db_issue"
-        }
-
-    elif level == "hard":
-        current_incident = {
-            "metrics": {"cpu": 30, "memory": 95, "latency": 200},
-            "root_cause": "memory_leak"
-        }
-
+    # -----------------------
+    # LOAD TASK PROPERLY
+    # -----------------------
+    if req.level == "easy":
+        task = easy_task()
+    elif req.level == "medium":
+        task = medium_task()
+    elif req.level == "hard":
+        task = hard_task()
     else:
         return {"error": "Invalid level"}
 
-    return {"message": f"Switched to {level}"}
+    # -----------------------
+    # INIT ENV CORRECTLY
+    # -----------------------
+    env.set_task(task)        # ✅ REQUIRED
+    current_obs = env.reset() # ✅ REQUIRED
+
+    return {
+        "message": f"{req.level} incident started",
+        "observation": current_obs
+    }
+
 
 # -----------------------
-# LIVE MONITOR (UNCHANGED)
+# STEP
+# -----------------------
+@app.post("/step")
+def step():
+    global current_obs
+
+    if current_obs is None:
+        return {"error": "Call /set_incident first"}
+
+    decision = agent.act(current_obs)
+    action = decision["action"]
+
+    obs, reward, done, info = env.step(action)
+    current_obs = obs
+
+    return {
+        "observation": obs,
+        "action": action,
+        "reward": reward,
+        "done": done,
+        "score": info.get("score", 0),
+        "reason": decision["reason"],
+        "confidence": decision["confidence"]
+    }
+
+
+# -----------------------
+# LIVE MONITOR
 # -----------------------
 @app.get("/live_monitor")
 def live_monitor():
-    try:
-        metrics = current_incident["metrics"]
-        action = agent.act(metrics)
+    global current_obs
 
-        return {
-            "metrics": metrics,
-            "action": action
-        }
+    if current_obs is None:
+        return {"error": "Initialize with /set_incident"}
 
-    except Exception as e:
-        return {"error": str(e)}
+    decision = agent.act(current_obs)
+    action = decision["action"]
+
+    obs, reward, done, info = env.step(action)
+    current_obs = obs
+
+    return {
+        "observation": obs,
+        "action": action,
+        "reward": reward,
+        "done": done,
+        "score": info.get("score", 0),
+        "reason": decision["reason"],
+        "confidence": decision["confidence"]
+    }
+
 
 # -----------------------
-# DIRECT PREDICT (UNCHANGED)
+# WEBSOCKET
 # -----------------------
-@app.post("/predict")
-def predict(metrics: Metrics):
-    try:
-        data = metrics.dict()
-        action = agent.act(data)
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
 
-        return {
-            "action": action
-        }
+    global current_obs
+
+    if current_obs is None:
+        task = easy_task()
+        env.set_task(task)
+        current_obs = env.reset()
+        agent.reset()
+
+    try:
+        while True:
+            decision = agent.act(current_obs)
+            action = decision["action"]
+
+            obs, reward, done, info = env.step(action)
+            current_obs = obs
+
+            await websocket.send_json({
+                "observation": obs,
+                "action": action,
+                "reward": reward,
+                "done": done,
+                "score": info.get("score", 0),
+                "reason": decision["reason"],
+                "confidence": decision["confidence"]
+            })
+
+            if done:
+                task = easy_task()
+                env.set_task(task)
+                current_obs = env.reset()
+                agent.reset()
+
+            await asyncio.sleep(1)
 
     except Exception as e:
-        return {"error": str(e)}
+        print("WebSocket error:", e)

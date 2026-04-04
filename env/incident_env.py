@@ -7,18 +7,23 @@ from tasks.hard_task import hard_task
 class IncidentEnv:
     def __init__(self):
         self.task = None
+        self.incident = None
         self.done = False
         self.steps = 0
         self.action_history = []
         self.grader = Grader()
 
     # -----------------------
-    # RESET
+    # RESET (MANDATORY ENTRY POINT)
     # -----------------------
     def reset(self, incident):
+        if not incident or "root_cause" not in incident:
+            raise ValueError("Invalid incident input")
+
         self.done = False
         self.steps = 0
         self.action_history = []
+        self.incident = incident
 
         root = incident["root_cause"]
 
@@ -29,14 +34,23 @@ class IncidentEnv:
         elif root == "memory_leak":
             self.task = hard_task()
         else:
-            raise ValueError("Unknown incident")
+            raise ValueError(f"Unknown incident type: {root}")
 
         return self._get_observation()
 
     # -----------------------
-    # STATE (MANDATORY)
+    # SAFETY CHECK
+    # -----------------------
+    def _ensure_initialized(self):
+        if self.task is None:
+            raise RuntimeError("Environment not initialized. Call reset() first.")
+
+    # -----------------------
+    # STATE
     # -----------------------
     def state(self):
+        self._ensure_initialized()
+
         return {
             "cpu": self.task["cpu"],
             "memory": self.task["memory"],
@@ -49,6 +63,8 @@ class IncidentEnv:
     # STEP
     # -----------------------
     def step(self, action):
+        self._ensure_initialized()
+
         if self.done:
             return self._get_observation(), 0.0, True, {}
 
@@ -56,7 +72,7 @@ class IncidentEnv:
         self.action_history.append(action)
 
         # -----------------------
-        # STATE TRANSITION (CRITICAL FIX)
+        # STATE TRANSITION
         # -----------------------
         if action == "scale_up":
             self.task["cpu"] -= 10
@@ -70,28 +86,25 @@ class IncidentEnv:
         elif action == "do_nothing":
             pass
 
-        # Prevent negative values (sanity)
+        else:
+            raise ValueError(f"Invalid action: {action}")
+
+        # Clamp values
         self.task["cpu"] = max(0, self.task["cpu"])
         self.task["memory"] = max(0, self.task["memory"])
         self.task["latency"] = max(0, self.task["latency"])
 
         # -----------------------
-        # SCORE FROM GRADER
+        # GRADING
         # -----------------------
         score = self.grader.grade(self.task, self.action_history)
 
-        # -----------------------
-        # REWARD (TRAJECTORY BASED)
-        # -----------------------
         reward = score
 
-        # penalty for useless action
         if action == "do_nothing":
             reward -= 0.2
 
-        # penalty for longer steps
         reward -= 0.05 * self.steps
-
         reward = max(0.0, reward)
 
         # -----------------------
@@ -100,20 +113,19 @@ class IncidentEnv:
         if score >= 0.8 or self.steps >= 5:
             self.done = True
 
-        # -----------------------
-        # INFO
-        # -----------------------
         info = {
             "score": score,
-            "task": self.task["description"]
+            "task": self.task.get("description", "N/A")
         }
 
         return self._get_observation(), reward, self.done, info
 
     # -----------------------
-    # OBSERVATION (FIXED)
+    # OBSERVATION
     # -----------------------
     def _get_observation(self):
+        self._ensure_initialized()
+
         return {
             "cpu": self.task["cpu"],
             "memory": self.task["memory"],

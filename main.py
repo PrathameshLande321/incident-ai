@@ -1,15 +1,33 @@
-from fastapi import FastAPI
-from env.incident_env import IncidentEnv
+from fastapi import FastAPI, WebSocket
+from fastapi.middleware.cors import CORSMiddleware   # ✅ ADDED
+from fastapi.responses import JSONResponse           # ✅ ADDED
+
+from env import IncidentEnv
 from agent import Agent
 from metrics_stream import get_metrics
 
-# ✅ NEW IMPORTS (OpenEnv spec)
 from models import Observation, StepResponse, ResetResponse
 
 app = FastAPI(title="Incident AI Resolver")
 
+# ✅ CORS FIX (REQUIRED)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 env = IncidentEnv()
 agent = Agent()
+
+# -----------------------
+# ROOT (REQUIRED FOR HF)
+# -----------------------
+@app.get("/")
+def home():
+    return JSONResponse(content={"status": "running", "message": "API is live 🚀"})
 
 # -----------------------
 # INCIDENTS
@@ -48,7 +66,7 @@ def set_incident(level: str):
     return {"message": f"Switched to {level}"}
 
 # -----------------------
-# RESET (OpenEnv compliant)
+# RESET
 # -----------------------
 @app.get("/reset", response_model=ResetResponse)
 def reset():
@@ -63,16 +81,14 @@ def reset():
     return ResetResponse(observation=obs)
 
 # -----------------------
-# STEP (OpenEnv compliant)
+# STEP
 # -----------------------
 @app.post("/step", response_model=StepResponse)
 def step(action: str):
-    # ensure env initialized
     if env.incident is None:
         env.reset(current_incident)
 
     metrics = get_metrics()
-
     reward, done = env.step(action)
 
     obs = Observation(
@@ -89,7 +105,7 @@ def step(action: str):
     )
 
 # -----------------------
-# AUTO PLAY (optional)
+# AUTO PLAY
 # -----------------------
 @app.get("/auto_play")
 def auto_play():
@@ -100,11 +116,9 @@ def auto_play():
 
         for _ in range(5):
             metrics = get_metrics()
-
             action, scores = agent.act(metrics)
 
             reward, done = env.step(action)
-
             agent.learn(action, reward)
 
             actions_taken.append({
@@ -123,35 +137,24 @@ def auto_play():
         return {"error": str(e)}
 
 # -----------------------
-# LIVE MONITOR (OpenEnv format)
+# LIVE MONITOR
 # -----------------------
-@app.get("/live_monitor", response_model=StepResponse)
+@app.get("/live_monitor")
 def live_monitor():
     try:
-        # ensure env initialized
         if env.incident is None:
             env.reset(current_incident)
 
-        # fetch metrics
         metrics = get_metrics()
-        print("🔥 METRICS DEBUG:", metrics)
 
         if metrics is None or not isinstance(metrics, dict):
             raise ValueError("Invalid metrics")
 
-        # agent decision
         action, info = agent.act(metrics)
 
-        print("ACTION:", action)
-        print("INFO:", info)
-
-        # env step
         reward, done = env.step(action)
-
-        # learning
         agent.learn(action, reward)
 
-        # observation
         obs = Observation(
             cpu=metrics["cpu"],
             memory=metrics["memory"],
@@ -170,10 +173,42 @@ def live_monitor():
         )
 
     except Exception as e:
-        print("ERROR IN /live_monitor:", e)
         return StepResponse(
             observation=Observation(cpu=0, memory=0, db_latency=0),
             reward=0.0,
             done=True,
             info={"error": str(e)}
         )
+
+# -----------------------
+# WEBSOCKET (REQUIRED FOR FRONTEND)
+# -----------------------
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+
+    try:
+        while True:
+            if env.incident is None:
+                env.reset(current_incident)
+
+            metrics = get_metrics()
+            action, info = agent.act(metrics)
+
+            reward, done = env.step(action)
+
+            data = {
+                "metrics": metrics,
+                "action": action,
+                "anomaly": metrics["cpu"] > 85 or metrics["db_latency"] > 300,
+                "confidence": info.get("confidence"),
+                "reason": info.get("reason"),
+            }
+
+            await websocket.send_json(data)
+
+            import asyncio
+            await asyncio.sleep(1)
+
+    except Exception:
+        pass
