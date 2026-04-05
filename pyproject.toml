@@ -1,7 +1,7 @@
 [project]
 name = "incident-ai-agent"
 version = "0.1.0"
-description = "AI agent for incident detection and resolution"
+description = "AI Incident Resolver"
 authors = [
     { name = "Prathamesh Lande" },
     { name = "Tapas Walde" },
@@ -11,8 +11,12 @@ dependencies = [
     "fastapi",
     "uvicorn",
     "pydantic",
-    "requests"
+    "requests",
+    "openenv-core>=0.2.0"
 ]
+
+[project.scripts]
+server = "server.app:app"
 
 [build-system]
 requires = ["setuptools"]
