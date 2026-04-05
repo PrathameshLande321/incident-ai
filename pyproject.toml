@@ -1,0 +1,19 @@
+[project]
+name = "incident-ai-agent"
+version = "0.1.0"
+description = "AI agent for incident detection and resolution"
+authors = [
+    { name = "Prathamesh Lande" },
+    { name = "Tapas Walde" },
+    { name = "Sujal Dandhale" }
+]
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "requests"
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
