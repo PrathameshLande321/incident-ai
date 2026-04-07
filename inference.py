@@ -1,7 +1,8 @@
 import os
 import requests
 
-API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
+# 🔥 FIXED PORT (CRITICAL)
+API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:7860")
 
 
 def run():
@@ -13,19 +14,24 @@ def run():
 
     try:
         res = requests.post(f"{API_BASE_URL}/reset")
-        data = res.json()
 
+        # 🔥 DEBUG (DO NOT REMOVE)
+        print("DEBUG RESET STATUS:", res.status_code, flush=True)
+        print("DEBUG RESET TEXT:", res.text, flush=True)
+
+        data = res.json()
         obs = data.get("observation", {})
 
-    except:
+    except Exception as e:
+        print("RESET ERROR:", str(e), flush=True)
         print("[END] task=incident_ai score=0 steps=0", flush=True)
         return
 
-    # 🔥 FORCE LOOP (NO DEPENDENCY ON done)
+    # FORCE LOOP
     while steps < 10:
         steps += 1
 
-        # SAFE ACCESS (NO CRASH)
+        # SAFE ACCESS
         cpu = obs.get("cpu", 0)
         latency = obs.get("latency", 0)
         memory = obs.get("memory", 0)
@@ -45,6 +51,7 @@ def run():
                 f"{API_BASE_URL}/step",
                 json={"action": action}
             )
+
             data = res.json()
 
             obs = data.get("observation", {})
@@ -59,7 +66,8 @@ def run():
             if done:
                 break
 
-        except:
+        except Exception as e:
+            print("STEP ERROR:", str(e), flush=True)
             break
 
     # END
