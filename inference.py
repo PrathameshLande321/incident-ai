@@ -3,22 +3,19 @@ import requests
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
 
-ACTIONS = [
-    "scale_up",
-    "restart_service",
-    "check_database",
-    "do_nothing"
-]
-
-
 def run():
-    print("START")
+    task_name = "incident_ai"
 
     total_reward = 0.0
     steps = 0
 
     # -----------------------
-    # RESET ENV (MANDATORY)
+    # START BLOCK (REQUIRED)
+    # -----------------------
+    print(f"[START] task={task_name}", flush=True)
+
+    # -----------------------
+    # RESET ENV
     # -----------------------
     try:
         res = requests.post(f"{API_BASE_URL}/reset")
@@ -30,12 +27,10 @@ def run():
         obs = data["observation"]
         done = data["done"]
 
-        print(f"RESET → {obs}")
-
-    except Exception as e:
-        print(f"RESET FAILED → {e}")
-        print("END total_reward=0.00")
-        return {"total_reward": 0.0, "steps": 0}
+    except Exception:
+        # MUST still print END block
+        print(f"[END] task={task_name} score=0 steps=0", flush=True)
+        return
 
     # -----------------------
     # LOOP
@@ -43,8 +38,7 @@ def run():
     while not done and steps < 10:
         steps += 1
 
-        # 🔥 SIMPLE POLICY (IMPORTANT)
-        # Choose action based on state
+        # SIMPLE POLICY
         if obs["cpu"] > 70:
             action = "scale_up"
         elif obs["latency"] > 100:
@@ -71,21 +65,25 @@ def run():
 
             total_reward += reward
 
+            # -----------------------
+            # STEP BLOCK (REQUIRED)
+            # -----------------------
             print(
-                f"STEP {steps}: action={action}, reward={reward:.2f}, done={done}"
+                f"[STEP] step={steps} reward={reward}",
+                flush=True
             )
 
-        except Exception as e:
-            print(f"STEP {steps}: FAILED → {e}")
+        except Exception:
             break
 
-    print(f"END total_reward={total_reward:.2f}")
-
-    return {
-        "total_reward": total_reward,
-        "steps": steps
-    }
+    # -----------------------
+    # END BLOCK (REQUIRED)
+    # -----------------------
+    print(
+        f"[END] task={task_name} score={total_reward} steps={steps}",
+        flush=True
+    )
 
 
 if __name__ == "__main__":
-    print(run())
+    run()
