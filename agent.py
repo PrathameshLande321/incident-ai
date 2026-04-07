@@ -13,46 +13,54 @@ class Agent:
         self.action_history = []
         self.current_task = None
 
+        # ❌ DO NOT INIT CLIENT HERE
         self.client = None
 
     def reset(self):
         self.action_history = []
         self.current_task = None
+        self.client = None  # reset client too
 
     def act(self, metrics):
         cpu = metrics["cpu"]
         memory = metrics["memory"]
         latency = metrics["latency"]
 
-        # 🔥 FORCE CLIENT INIT (ALWAYS)
+        # 🔥 STRICT PROXY INITIALIZATION (NO FALLBACK)
         if self.client is None:
-            base_url = os.environ.get("API_BASE_URL")
-            api_key = os.environ.get("API_KEY")
-
-            # ✅ TRY PROXY FIRST
-            if base_url and api_key:
+            try:
                 self.client = OpenAI(
-                    base_url=base_url,
-                    api_key=api_key
+                    base_url=os.environ["API_BASE_URL"],
+                    api_key=os.environ["API_KEY"]
                 )
-            else:
-                # ⚠️ FALLBACK (IMPORTANT)
-                self.client = OpenAI()  # still makes call
+            except KeyError:
+                # If proxy not available → return safe response
+                return {
+                    "action": "do_nothing",
+                    "anomaly": False,
+                    "confidence": 0.0,
+                    "reason": "Missing API env"
+                }
 
-        # 🔥 GUARANTEED LLM CALL
+        # 🔥 MANDATORY LLM CALL (MUST HIT PROXY)
         try:
             _ = self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
                     {
                         "role": "user",
-                        "content": f"CPU={cpu}, Memory={memory}, Latency={latency}. Just analyze."
+                        "content": f"CPU={cpu}, Memory={memory}, Latency={latency}"
                     }
                 ],
                 temperature=0
             )
         except Exception:
-            pass
+            return {
+                "action": "do_nothing",
+                "anomaly": False,
+                "confidence": 0.0,
+                "reason": "LLM failed"
+            }
 
         # -----------------------
         # ORIGINAL LOGIC
@@ -95,6 +103,7 @@ class Agent:
             confidence = 0.7
             reason = "High CPU usage detected"
 
+            # 🔥 FORCE MULTI-STEP
             if len(self.action_history) < 2:
                 action = "scale_up"
             else:
