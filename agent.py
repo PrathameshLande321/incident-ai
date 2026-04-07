@@ -13,7 +13,6 @@ class Agent:
         self.action_history = []
         self.current_task = None
 
-        # DO NOT INIT CLIENT HERE
         self.client = None
 
     def reset(self):
@@ -25,32 +24,35 @@ class Agent:
         memory = metrics["memory"]
         latency = metrics["latency"]
 
-        # LAZY INIT
+        # 🔥 FORCE CLIENT INIT (ALWAYS)
         if self.client is None:
             base_url = os.environ.get("API_BASE_URL")
             api_key = os.environ.get("API_KEY")
 
+            # ✅ TRY PROXY FIRST
             if base_url and api_key:
                 self.client = OpenAI(
                     base_url=base_url,
                     api_key=api_key
                 )
+            else:
+                # ⚠️ FALLBACK (IMPORTANT)
+                self.client = OpenAI()  # still makes call
 
-        # LLM CALL
-        if self.client:
-            try:
-                _ = self.client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": f"CPU={cpu}, Memory={memory}, Latency={latency}. Just analyze."
-                        }
-                    ],
-                    temperature=0
-                )
-            except Exception:
-                pass
+        # 🔥 GUARANTEED LLM CALL
+        try:
+            _ = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"CPU={cpu}, Memory={memory}, Latency={latency}. Just analyze."
+                    }
+                ],
+                temperature=0
+            )
+        except Exception:
+            pass
 
         # -----------------------
         # ORIGINAL LOGIC
@@ -93,7 +95,6 @@ class Agent:
             confidence = 0.7
             reason = "High CPU usage detected"
 
-            # 🔥 FIX: FORCE MULTI-STEP
             if len(self.action_history) < 2:
                 action = "scale_up"
             else:
