@@ -8,7 +8,7 @@ def run():
     total_reward = 0.0
     steps = 0
 
-    # START BLOCK
+    # START
     print("[START] task=incident_ai", flush=True)
 
     try:
@@ -17,26 +17,25 @@ def run():
 
         obs = data.get("observation", {})
 
-        # 🔥 FORCE LOOP START (CRITICAL FIX)
-        done = False
-
     except:
         print("[END] task=incident_ai score=0 steps=0", flush=True)
         return
 
-    while steps < 10:   # 🔥 REMOVE dependency on initial done
+    # 🔥 FORCE LOOP (NO DEPENDENCY ON done)
+    while steps < 10:
         steps += 1
 
-        # safety check (avoid crash)
-        if not obs:
-            break
+        # SAFE ACCESS (NO CRASH)
+        cpu = obs.get("cpu", 0)
+        latency = obs.get("latency", 0)
+        memory = obs.get("memory", 0)
 
-        # simple policy
-        if obs.get("cpu", 0) > 70:
+        # POLICY
+        if cpu > 70:
             action = "scale_up"
-        elif obs.get("latency", 0) > 100:
+        elif latency > 100:
             action = "restart_service"
-        elif obs.get("memory", 0) > 70:
+        elif memory > 70:
             action = "check_database"
         else:
             action = "do_nothing"
@@ -54,17 +53,16 @@ def run():
 
             total_reward += reward
 
-            # STEP BLOCK
+            # STEP
             print(f"[STEP] step={steps} reward={reward}", flush=True)
 
-            # 🔥 BREAK ONLY AFTER AT LEAST 1 STEP
             if done:
                 break
 
         except:
             break
 
-    # END BLOCK
+    # END
     print(
         f"[END] task=incident_ai score={total_reward} steps={steps}",
         flush=True
