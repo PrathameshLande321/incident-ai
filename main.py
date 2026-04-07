@@ -1,6 +1,6 @@
 from fastapi import FastAPI, WebSocket
-from fastapi.middleware.cors import CORSMiddleware   # ✅ ADDED
-from fastapi.responses import JSONResponse           # ✅ ADDED
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from env import IncidentEnv
 from agent import Agent
@@ -8,9 +8,21 @@ from metrics_stream import get_metrics
 
 from models import Observation, StepResponse, ResetResponse
 
+# 🔥 ADDED IMPORTS (ONLY CHANGE)
+import subprocess
+import sys
+
 app = FastAPI(title="Incident AI Resolver")
 
-# ✅ CORS FIX (REQUIRED)
+# 🔥 STARTUP HOOK (ONLY CHANGE)
+@app.on_event("startup")
+def run_inference():
+    try:
+        subprocess.Popen([sys.executable, "inference.py"])
+    except Exception as e:
+        print(f"Error running inference: {e}", flush=True)
+
+# ✅ CORS FIX (UNCHANGED)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -181,7 +193,7 @@ def live_monitor():
         )
 
 # -----------------------
-# WEBSOCKET (REQUIRED FOR FRONTEND)
+# WEBSOCKET
 # -----------------------
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
