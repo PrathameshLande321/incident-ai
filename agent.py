@@ -13,7 +13,7 @@ class Agent:
         self.action_history = []
         self.current_task = None
 
-        # ❌ DO NOT INIT CLIENT HERE
+        # DO NOT INIT CLIENT HERE
         self.client = None
 
     def reset(self):
@@ -25,7 +25,7 @@ class Agent:
         memory = metrics["memory"]
         latency = metrics["latency"]
 
-        # 🔥 LAZY INIT (CORRECT WAY)
+        # LAZY INIT
         if self.client is None:
             base_url = os.environ.get("API_BASE_URL")
             api_key = os.environ.get("API_KEY")
@@ -36,7 +36,7 @@ class Agent:
                     api_key=api_key
                 )
 
-        # 🔥 MAKE LLM CALL ONLY IF AVAILABLE
+        # LLM CALL
         if self.client:
             try:
                 _ = self.client.chat.completions.create(
@@ -50,11 +50,10 @@ class Agent:
                     temperature=0
                 )
             except Exception:
-                # ignore but DO NOT crash
                 pass
 
         # -----------------------
-        # ORIGINAL LOGIC (UNCHANGED)
+        # ORIGINAL LOGIC
         # -----------------------
         if self.current_task is None:
             if memory >= 90:
@@ -94,8 +93,11 @@ class Agent:
             confidence = 0.7
             reason = "High CPU usage detected"
 
-            if len(self.action_history) == 0:
+            # 🔥 FIX: FORCE MULTI-STEP
+            if len(self.action_history) < 2:
                 action = "scale_up"
+            else:
+                action = "do_nothing"
 
         self.action_history.append(action)
 
