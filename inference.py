@@ -8,29 +8,35 @@ def run():
     total_reward = 0.0
     steps = 0
 
-    #  START BLOCK (STRICT FORMAT)
+    # START BLOCK
     print("[START] task=incident_ai", flush=True)
 
     try:
         res = requests.post(f"{API_BASE_URL}/reset")
         data = res.json()
 
-        obs = data["observation"]
-        done = data["done"]
+        obs = data.get("observation", {})
+
+        # 🔥 FORCE LOOP START (CRITICAL FIX)
+        done = False
 
     except:
         print("[END] task=incident_ai score=0 steps=0", flush=True)
         return
 
-    while not done and steps < 10:
+    while steps < 10:   # 🔥 REMOVE dependency on initial done
         steps += 1
 
+        # safety check (avoid crash)
+        if not obs:
+            break
+
         # simple policy
-        if obs["cpu"] > 70:
+        if obs.get("cpu", 0) > 70:
             action = "scale_up"
-        elif obs["latency"] > 100:
+        elif obs.get("latency", 0) > 100:
             action = "restart_service"
-        elif obs["memory"] > 70:
+        elif obs.get("memory", 0) > 70:
             action = "check_database"
         else:
             action = "do_nothing"
@@ -42,19 +48,23 @@ def run():
             )
             data = res.json()
 
-            obs = data["observation"]
-            reward = float(data["reward"])
-            done = data["done"]
+            obs = data.get("observation", {})
+            reward = float(data.get("reward", 0))
+            done = data.get("done", False)
 
             total_reward += reward
 
-            #  STEP BLOCK (STRICT FORMAT)
+            # STEP BLOCK
             print(f"[STEP] step={steps} reward={reward}", flush=True)
+
+            # 🔥 BREAK ONLY AFTER AT LEAST 1 STEP
+            if done:
+                break
 
         except:
             break
 
-    #  END BLOCK (STRICT FORMAT)
+    # END BLOCK
     print(
         f"[END] task=incident_ai score={total_reward} steps={steps}",
         flush=True
