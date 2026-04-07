@@ -14,8 +14,20 @@ from tasks.easy_task import easy_task
 from tasks.medium_task import medium_task
 from tasks.hard_task import hard_task
 
+# 🔥 ADDED (ONLY CHANGE)
+import subprocess
+import sys
+
 
 app = FastAPI()
+
+# 🔥 ADDED (ONLY CHANGE)
+@app.on_event("startup")
+def run_inference():
+    try:
+        subprocess.Popen([sys.executable, "inference.py"])
+    except Exception as e:
+        print(f"Error running inference: {e}", flush=True)
 
 # -----------------------
 # CORS
@@ -69,7 +81,6 @@ def reset():
     try:
         agent.reset()
 
-        # 🔥 RANDOMIZE TASK (IMPORTANT)
         task = random.choice([
             easy_task(),
             medium_task(),
@@ -113,8 +124,8 @@ def step_openenv(action: ActionInput):
 
         return {
             "observation": obs,
-            "reward": float(reward),   # 🔥 enforce float
-            "done": bool(done),       # 🔥 enforce bool
+            "reward": float(reward),
+            "done": bool(done),
             "info": info if isinstance(info, dict) else {}
         }
 
