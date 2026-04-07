@@ -13,14 +13,17 @@ class Agent:
         self.action_history = []
         self.current_task = None
 
-        # 🔥 ADD LLM CLIENT (REQUIRED FOR VALIDATION)
-        try:
-            self.client = OpenAI(
-                base_url=os.environ["API_BASE_URL"],
-                api_key=os.environ["API_KEY"]
-            )
-        except:
-            self.client = None
+        # 🔥 FORCE ENV (NO SILENT FAIL)
+        base_url = os.environ.get("API_BASE_URL")
+        api_key = os.environ.get("API_KEY")
+
+        if not base_url or not api_key:
+            raise ValueError("Missing API_BASE_URL or API_KEY")
+
+        self.client = OpenAI(
+            base_url=base_url,
+            api_key=api_key
+        )
 
     # -----------------------
     # RESET
@@ -37,21 +40,21 @@ class Agent:
         memory = metrics["memory"]
         latency = metrics["latency"]
 
-        # 🔥 FORCE LLM CALL (VALIDATOR REQUIREMENT)
-        if self.client:
-            try:
-                _ = self.client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": f"CPU={cpu}, Memory={memory}, Latency={latency}. Just analyze."
-                        }
-                    ],
-                    temperature=0
-                )
-            except:
-                pass
+        # 🔥 GUARANTEED LLM CALL (NO SILENT FAIL)
+        try:
+            _ = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"CPU={cpu}, Memory={memory}, Latency={latency}. Just analyze."
+                    }
+                ],
+                temperature=0
+            )
+        except Exception as e:
+            # ❌ DO NOT IGNORE — FAIL FAST
+            raise RuntimeError(f"LLM call failed: {e}")
 
         # -----------------------
         # 1) DETECT TASK ONLY ONCE
@@ -86,8 +89,6 @@ class Agent:
 
             if len(self.action_history) < len(sequence):
                 action = sequence[len(self.action_history)]
-            else:
-                action = "do_nothing"
 
         # -----------------------
         # 4) MEDIUM TASK
@@ -101,8 +102,6 @@ class Agent:
 
             if len(self.action_history) < len(sequence):
                 action = sequence[len(self.action_history)]
-            else:
-                action = "do_nothing"
 
         # -----------------------
         # 5) EASY TASK
@@ -114,8 +113,6 @@ class Agent:
 
             if len(self.action_history) == 0:
                 action = "scale_up"
-            else:
-                action = "do_nothing"
 
         # -----------------------
         # 6) SAVE HISTORY
